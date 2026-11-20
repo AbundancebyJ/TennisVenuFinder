@@ -1,0 +1,32 @@
+:root {
+  font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  color-scheme: light dark;
+  --fg: #1a1a1a;
+  --bg: #ffffff;
+  --muted: #666;
+  --border: #e3e3e3;
+  --accent: #2e7d32;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #eee;
+    --bg: #121212;
+    --muted: #aaa;
+    --border: #333;
+    --accent: #81c784;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--fg); background: var(--bg); }
+.app { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+h1 { color: var(--accent); }
+.filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.filters input[type='search'] {
+  flex: 1; min-width: 200px; padding: 10px 12px; font-size: 1rem;
+  border: 1px solid var(--border); border-radius: 8px; background: transparent; color: inherit;
+}
+.count { color: var(--muted); }
+.venue-list { list-style: none; padding: 0; display: grid; gap: 12px; }
+.venue-card { border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.venue-card h2 { margin: 0 0 4px; font-size: 1.1rem; }
+.venue-card .address, .venue-card .meta { margin: 2px 0; color: var(--muted); }
