@@ -52,18 +52,25 @@ function coreTokens(name) {
  * - 겹치지 않으면 100m 이내만 허용 (근처 사설 레슨장 등 오매칭 방지)
  * - 이름이 "테니스장"처럼 일반적이면 500m 이내 가장 가까운 곳
  */
-function pick(docs, name) {
-  const tokens = coreTokens(name)
+function pick(docs, name, extraTokens = []) {
+  const tokens = [...coreTokens(name), ...extraTokens]
   const tennis = docs.filter((d) => /테니스/.test(d.place_name) || /테니스/.test(d.category_name))
   const dist = (d) => (d.distance ? Number(d.distance) : Infinity)
   const shares = (d) => tokens.some((t) => d.place_name.replace(/\s/g, '').includes(t.slice(0, 2)))
-  if (!tokens.length) return tennis.find((d) => dist(d) <= 500) ?? null
+  if (!coreTokens(name).length && !extraTokens.length) return tennis.find((d) => dist(d) <= 500) ?? null
   return tennis.find((d) => shares(d) && dist(d) <= 1500) ?? tennis.find((d) => dist(d) <= 100) ?? null
 }
 
 const { venues } = JSON.parse(await readFile(resolve(DATA, 'tennis.json'), 'utf8'))
 const places = new Map()
 for (const v of venues) if (!places.has(placeKey(v))) places.set(placeKey(v), v)
+
+/** 서비스명 괄호 안의 별칭 (예: "…응봉공원(대현산배수지)" → "대현산배수지") */
+function aliasTokens(key) {
+  const names = venues.filter((v) => placeKey(v) === key).map((v) => v.name)
+  const inParens = names.flatMap((n) => [...n.matchAll(/\(([^)]+)\)/g)].map((m) => m[1]))
+  return [...new Set(inParens.filter((t) => !/평일|주말|토|일|공휴일/.test(t)).flatMap(coreTokens))]
+}
 
 const out = {}
 let matched = 0
@@ -73,7 +80,7 @@ for (const [key, v] of places) {
   try {
     let doc = null
     for (const q of queries) {
-      doc = pick(await search(q, v.lng, v.lat), name)
+      doc = pick(await search(q, v.lng, v.lat), name, aliasTokens(key))
       if (doc) break
       await sleep(100)
     }
