@@ -7,7 +7,9 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const KEY = process.env.DATA_GO_KR_KEY
+// Encoding 키(%2B 등 포함)를 넣어도 동작하도록 디코딩해서 사용 (URLSearchParams가 다시 인코딩함)
+const RAW_KEY = process.env.DATA_GO_KR_KEY?.trim()
+const KEY = RAW_KEY && /%[0-9A-Fa-f]{2}/.test(RAW_KEY) ? decodeURIComponent(RAW_KEY) : RAW_KEY
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../public/data')
 const DAYS_AHEAD = 14
 
@@ -16,6 +18,7 @@ const GRID = { nx: 60, ny: 127 }
 const MID_LAND_REG = '11B00000'
 const MID_TA_REG = '11B10101'
 
+if (KEY) console.log(`인증키 형식: ${KEY === RAW_KEY ? 'Decoding' : 'Encoding → 디코딩해서 사용'} (길이 ${KEY.length})`)
 if (!KEY) {
   console.log('DATA_GO_KR_KEY 가 없어 공휴일·날씨 수집을 건너뜁니다.')
   process.exit(0)
