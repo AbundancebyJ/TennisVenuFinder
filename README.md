@@ -3,6 +3,8 @@
 서울시 공공서비스예약의 테니스장을 **날짜별·시간대별로 한눈에** 보여주는 웹페이지입니다.
 
 - 평일 / 주말·공휴일 버튼, 또는 오늘부터 14일간의 날짜(일요일·공휴일 빨간색, 토요일 파란색)로 골라 볼 수 있어요.
+- 날짜마다 서울 날씨 아이콘, 최저·최고기온, 강수확률(30% 이상)을 보여줘요(약 10일치).
+- 같은 테니스장의 여러 코트·평일/주말 서비스는 한 카드로 묶어서 보여줘요.
 - 목록은 구 → 테니스장 이름 순으로 정렬되고, 구 이름·검색어·접수중 여부로 필터링해요.
 - 지도(OpenStreetMap)에서 위치를 확인하고, "예약하기"로 서울시 예약 페이지로 이동해요.
 - 반응형(데스크톱: 목록+지도 2단 / 모바일: 탭 전환), 라이트·다크·시스템 테마를 지원해요.
@@ -13,7 +15,10 @@
 
 이 API는 **시간대별 잔여 현황을 제공하지 않아요.** 접수 상태(`접수중`/`예약마감` 등), 운영 기간,
 운영 시간, 서비스명의 평일/주말 구분만 보여주고, 실제 남은 시간은 예약 페이지에서 확인해야 해요.
-공휴일은 `src/lib/holidays.ts`에 직접 관리해요(2026–2027 수록, 매년 추가 필요).
+그 밖에 공공데이터포털 API를 함께 사용해요(`scripts/fetch-extras.mjs`).
+
+- 한국천문연구원 특일정보: 공휴일 (실패 시 `src/lib/holidays.ts`의 기본 목록 사용)
+- 기상청 단기예보(서울 중구 격자) + 중기예보(서울): 날짜별 날씨·기온·강수확률
 
 API가 HTTP만 지원해서 HTTPS 페이지의 브라우저에서 직접 호출할 수 없어요. 그래서
 `scripts/fetch-venues.mjs`가 데이터를 받아 `public/data/tennis.json`으로 저장하고, 앱은 그 정적 JSON을 읽어요.
@@ -22,7 +27,7 @@ API가 HTTP만 지원해서 HTTPS 페이지의 브라우저에서 직접 호출�
 
 ```bash
 npm install
-SEOUL_API_KEY=발급받은키 npm run fetch-data   # 키 없이 실행하면 샘플 5건
+SEOUL_API_KEY=... DATA_GO_KR_KEY=... npm run fetch-data   # 키 없으면 샘플 5건, 날씨·공휴일 생략
 npm run dev                                   # http://localhost:5173
 npm run build
 npm run lint
@@ -32,7 +37,7 @@ npm run lint
 
 `.github/workflows/deploy.yml`이 main 푸시 때와 **매시간** 데이터를 새로 받아 빌드·배포해요.
 
-1. 저장소 **Settings → Secrets and variables → Actions**에 `SEOUL_API_KEY` 추가
+1. 저장소 **Settings → Secrets and variables → Actions**에 `SEOUL_API_KEY`, `DATA_GO_KR_KEY` 추가
 2. **Settings → Pages → Source**를 `GitHub Actions`로 설정
 3. Actions 탭에서 워크플로를 한 번 실행 (또는 main에 푸시)
 

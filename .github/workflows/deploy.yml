@@ -30,6 +30,10 @@ jobs:
         env:
           SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
         run: node scripts/fetch-venues.mjs
+      - name: Fetch holidays & weather (data.go.kr)
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+        run: node scripts/fetch-extras.mjs
       - name: Build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/

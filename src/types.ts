@@ -29,3 +29,20 @@ export interface VenueData {
   partial: boolean
   venues: Venue[]
 }
+
+export type WeatherIcon = 'sun' | 'partly' | 'cloud' | 'rain' | 'snow' | 'sleet' | 'shower'
+
+export interface DayWeather {
+  icon: WeatherIcon | null
+  tmin: number | null
+  tmax: number | null
+  /** 강수확률(%) */
+  pop: number | null
+  source: 'short' | 'mid'
+}
+
+export interface WeatherData {
+  fetchedAt: string
+  region: string
+  days: Record<string, DayWeather>
+}

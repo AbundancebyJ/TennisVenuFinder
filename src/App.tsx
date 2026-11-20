@@ -12,9 +12,9 @@ import {
   toISODate,
   upcomingDates,
 } from './lib/availability'
-import { holidayName } from './lib/holidays'
+import { DEFAULT_HOLIDAYS, mergeHolidays } from './lib/holidays'
 import { useTheme } from './lib/useTheme'
-import type { Venue, VenueData } from './types'
+import type { DayWeather, Venue, VenueData, WeatherData } from './types'
 
 const DAYS = 14
 type DayFilter = 'all' | 'weekday' | 'weekend'
@@ -38,6 +38,8 @@ export default function App() {
   const [onlyReceiving, setOnlyReceiving] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
+  const [weather, setWeather] = useState<Record<string, DayWeather>>({})
+  const [holidays, setHolidays] = useState(DEFAULT_HOLIDAYS)
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/tennis.json`)
@@ -47,6 +49,15 @@ export default function App() {
       })
       .then(setData)
       .catch((e: Error) => setError(e.message))
+
+    // 공휴일·날씨는 없어도 동작 (실패 시 기본 공휴일 목록 사용, 날씨 생략)
+    const optional = <T,>(name: string) =>
+      fetch(`${import.meta.env.BASE_URL}data/${name}`).then((r) => (r.ok ? (r.json() as Promise<T>) : null)).catch(() => null)
+    optional<{ months: string[]; holidays: Record<string, string> }>('holidays.json').then((h) => {
+      if (!h) return
+      setHolidays(mergeHolidays(h.holidays, h.months))
+    })
+    optional<WeatherData>('weather.json').then((w) => w && setWeather(w.days))
   }, [])
 
   // 자정이 지나면 날짜 목록 갱신
@@ -72,19 +83,19 @@ export default function App() {
 
   const filtered = useMemo(() => {
     const list: Venue[] = base.filter((v) =>
-      date ? operatesOn(v, date) : dayFilter === 'all' || matchesDayType(v, dayFilter),
+      date ? operatesOn(v, date, holidays) : dayFilter === 'all' || matchesDayType(v, dayFilter),
     )
     return list.sort(compareVenues)
-  }, [base, date, dayFilter])
+  }, [base, date, dayFilter, holidays])
 
   const dateCounts = useMemo(
-    () => Object.fromEntries(dates.map((d) => [d, base.filter((v) => operatesOn(v, d)).length])),
-    [base, dates],
+    () => Object.fromEntries(dates.map((d) => [d, base.filter((v) => operatesOn(v, d, holidays)).length])),
+    [base, dates, holidays],
   )
 
   const pickDate = (d: string | null) => {
     setDate(d)
-    setDayFilter(d ? dateDayType(d) : 'all')
+    setDayFilter(d ? dateDayType(d, holidays) : 'all')
   }
   const pickDayFilter = (f: DayFilter) => {
     setDayFilter(f)
@@ -133,11 +144,11 @@ export default function App() {
           ))}
           {date && (
             <span className="picked">
-              {date.slice(5).replace('-', '/')} {holidayName(date) ? `· ${holidayName(date)}` : ''} 기준
+              {date.slice(5).replace('-', '/')} {holidays[date] ? `· ${holidays[date]}` : ''} 기준
             </span>
           )}
         </div>
-        <DateStrip dates={dates} value={date} counts={dateCounts} onChange={pickDate} />
+        <DateStrip dates={dates} value={date} counts={dateCounts} weather={weather} holidays={holidays} onChange={pickDate} />
         <div className="filter-row">
           <input
             type="search"
@@ -193,8 +204,8 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          데이터: 서울시 공공서비스예약 OpenAPI (ListPublicReservationSport). 접수 상태와 운영 기간 기준이며, 실제 남은
-          시간은 각 예약 페이지에서 확인하세요.
+          데이터: 서울시 공공서비스예약 OpenAPI, 기상청 단기·중기예보(서울 기준), 한국천문연구원 특일정보. 접수 상태와
+          운영 기간 기준이며, 실제 남은 시간은 각 예약사이트에서 확인하세요.
         </p>
       </footer>
     </div>

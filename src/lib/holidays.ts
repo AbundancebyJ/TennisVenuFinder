@@ -1,5 +1,6 @@
-// 대한민국 공휴일 (대체공휴일·선거일 포함). 매년 말 다음 해 목록을 추가하세요.
-export const HOLIDAYS: Record<string, string> = {
+// 대한민국 공휴일 기본값 (대체공휴일·선거일 포함).
+// 배포 시 한국천문연구원 특일정보 API(public/data/holidays.json)로 받은 값이 우선 적용됩니다.
+const FALLBACK: Record<string, string> = {
   // 2026
   '2026-01-01': '신정',
   '2026-02-16': '설날 연휴',
@@ -45,4 +46,13 @@ export const HOLIDAYS: Record<string, string> = {
   '2027-12-27': '대체공휴일(성탄절)',
 }
 
-export const holidayName = (date: string): string | undefined => HOLIDAYS[date]
+export type Holidays = Record<string, string>
+
+export const DEFAULT_HOLIDAYS: Holidays = FALLBACK
+
+/** API로 받은 공휴일을 반영 (API로 조회한 달(YYYY-MM)은 API 값으로 교체) */
+export function mergeHolidays(fromApi: Holidays, fetchedMonths: string[]): Holidays {
+  const months = new Set(fetchedMonths)
+  const kept = Object.entries(FALLBACK).filter(([d]) => !months.has(d.slice(0, 7)))
+  return { ...Object.fromEntries(kept), ...fromApi }
+}
