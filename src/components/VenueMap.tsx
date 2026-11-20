@@ -2,15 +2,12 @@ import { useEffect, useMemo, useRef } from 'react'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import type { LatLngBoundsExpression } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { openSlotCount } from '../lib/availability'
+import { isReceiving } from '../lib/availability'
 import type { Venue } from '../types'
 
 interface Props {
   venues: Venue[]
-  date: string
-  hour: number | null
   selectedId: string | null
-  now: Date
   onSelectVenue: (id: string) => void
 }
 
@@ -65,7 +62,7 @@ function FlyTo({ place }: { place: Place | undefined }) {
   return null
 }
 
-export function VenueMap({ venues, date, hour, selectedId, now, onSelectVenue }: Props) {
+export function VenueMap({ venues, selectedId, onSelectVenue }: Props) {
   const places = useMemo(() => {
     const byKey = new Map<string, Place>()
     for (const v of venues) {
@@ -73,11 +70,11 @@ export function VenueMap({ venues, date, hour, selectedId, now, onSelectVenue }:
       const key = `${v.lat.toFixed(4)},${v.lng.toFixed(4)}`
       const p = byKey.get(key) ?? { key, name: v.place, lat: v.lat, lng: v.lng, venues: [], open: 0 }
       p.venues.push(v)
-      p.open += openSlotCount(v, date, hour, now)
+      p.open += Number(isReceiving(v))
       byKey.set(key, p)
     }
     return [...byKey.values()]
-  }, [venues, date, hour, now])
+  }, [venues])
 
   const selectedPlace = places.find((p) => p.venues.some((v) => v.id === selectedId))
 
@@ -105,13 +102,13 @@ export function VenueMap({ venues, date, hour, selectedId, now, onSelectVenue }:
               <strong>{p.name}</strong>
               <ul className="popup-list">
                 {p.venues.map((v) => {
-                  const n = openSlotCount(v, date, hour, now)
+                  const on = isReceiving(v)
                   return (
                     <li key={v.id}>
                       <a href={v.url} target="_blank" rel="noreferrer">
                         {v.name}
                       </a>
-                      <span className={n > 0 ? 'ok' : 'no'}>{n > 0 ? ` 가능 ${n}시간` : ' 불가'}</span>
+                      <span className={on ? 'ok' : 'no'}> {v.status}</span>
                     </li>
                   )
                 })}

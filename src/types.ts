@@ -29,10 +29,3 @@ export interface VenueData {
   partial: boolean
   venues: Venue[]
 }
-
-/** 특정 날짜·시간대의 상태 */
-export type SlotState =
-  | 'open' // 접수중 + 운영시간 내 → 예약 가능 후보
-  | 'closed' // 운영시간 내지만 접수 마감/중지
-  | 'past' // 이미 지난 시간
-  | 'none' // 운영하지 않음
