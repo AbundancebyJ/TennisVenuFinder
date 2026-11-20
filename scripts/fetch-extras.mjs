@@ -74,6 +74,7 @@ async function call(url, params) {
 }
 
 // ---------- 공휴일 ----------
+const HOLIDAY_ALIAS = { '1월1일': '신정', 기독탄신일: '성탄절' }
 async function fetchHolidays() {
   const now = kstNow()
   const months = new Set()
@@ -93,7 +94,8 @@ async function fetchHolidays() {
     for (const it of items) {
       if (it.isHoliday !== 'Y') continue
       const date = iso(String(it.locdate))
-      holidays[date] = holidays[date] ? `${holidays[date]}·${it.dateName}` : it.dateName
+      const name = HOLIDAY_ALIAS[it.dateName] ?? it.dateName
+      holidays[date] = holidays[date] ? `${holidays[date]}·${name}` : name
     }
   }
   return { months: [...months], holidays }
@@ -164,6 +166,8 @@ async function fetchShortTerm() {
     }
     for (const [date, d] of Object.entries(byDate)) {
       const prev = days[iso(date)] ?? {}
+      // 예보 범위 끝에 몇 시간만 걸친 날은 불완전하므로 중기예보에 맡김
+      if (d.tmp.length < 12 && d.tmn === undefined && d.tmx === undefined && !prev.icon) continue
       let icon = null
       for (const p of d.pty) if (p > 0) icon = worse(icon, PTY_ICON[p] ?? 'rain')
       if (!icon && d.sky.length) {
