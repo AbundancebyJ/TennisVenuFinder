@@ -1,5 +1,6 @@
 // 카카오 지도 JavaScript SDK 로더 (필요한 타입만 최소로 선언)
-export const KAKAO_MAP_KEY: string | undefined = import.meta.env.VITE_KAKAO_MAP_KEY || undefined
+// 붙여넣기 시 섞인 공백·줄바꿈 제거
+export const KAKAO_MAP_KEY: string | undefined = import.meta.env.VITE_KAKAO_MAP_KEY?.trim() || undefined
 
 export interface KLatLng {
   getLat(): number
