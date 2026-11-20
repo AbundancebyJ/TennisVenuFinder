@@ -61,6 +61,7 @@ for (const [key, v] of places) {
       if (doc) break
       await sleep(100)
     }
+    console.log(`  ${doc ? '✓' : '✗'} ${key} → ${doc ? `${doc.place_name} (${doc.distance ?? '?'}m)` : '없음'}`)
     if (doc) {
       matched++
       out[key] = {
