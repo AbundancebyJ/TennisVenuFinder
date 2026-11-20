@@ -3,7 +3,7 @@ import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaf
 import type { LatLngBoundsExpression } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { isReceiving } from '../lib/availability'
-import { groupPlaces, kakaoRouteUrl, type Place } from '../lib/places'
+import { groupPlaces, kakaoRouteUrl, placeKey, venueHref, type Place } from '../lib/places'
 import type { Venue } from '../types'
 
 interface Props {
@@ -94,9 +94,14 @@ export default function LeafletMap({ venues, selectedId, onSelectVenue }: Props)
                   )
                 })}
               </ul>
-              <a className="k-route" href={kakaoRouteUrl(p.name, p.lat, p.lng)} target="_blank" rel="noreferrer">
-                카카오맵 길찾기 →
-              </a>
+              <div className="k-links">
+                <a className="k-route" href={venueHref(placeKey(p.venues[0]))}>
+                  상세 보기 ›
+                </a>
+                <a className="k-route" href={kakaoRouteUrl(p.name, p.lat, p.lng)} target="_blank" rel="noreferrer">
+                  길찾기 →
+                </a>
+              </div>
             </Popup>
           </CircleMarker>
         )

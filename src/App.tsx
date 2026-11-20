@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DateStrip } from './components/DateStrip'
 import { ThemeToggle } from './components/ThemeToggle'
 import { VenueList } from './components/VenueList'
+import { VenueDetail } from './components/VenueDetail'
 import { VenueMap } from './components/VenueMap'
 import {
   compareVenues,
@@ -13,8 +14,9 @@ import {
   upcomingDates,
 } from './lib/availability'
 import { DEFAULT_HOLIDAYS, mergeHolidays } from './lib/holidays'
+import { useHashRoute } from './lib/useHashRoute'
 import { useTheme } from './lib/useTheme'
-import type { DayWeather, Venue, VenueData, WeatherData } from './types'
+import type { DayWeather, KakaoPlace, Venue, VenueData, WeatherData } from './types'
 
 const DAYS = 14
 type DayFilter = 'all' | 'weekday' | 'weekend'
@@ -40,6 +42,9 @@ export default function App() {
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
   const [weather, setWeather] = useState<Record<string, DayWeather>>({})
   const [holidays, setHolidays] = useState(DEFAULT_HOLIDAYS)
+  const [kakaoPlaces, setKakaoPlaces] = useState<Record<string, KakaoPlace>>({})
+  const route = useHashRoute()
+  const listScroll = useRef(0)
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/tennis.json`)
@@ -58,6 +63,7 @@ export default function App() {
       setHolidays(mergeHolidays(h.holidays, h.months))
     })
     optional<WeatherData>('weather.json').then((w) => w && setWeather(w.days))
+    optional<{ places: Record<string, KakaoPlace> }>('kakao-places.json').then((k) => k && setKakaoPlaces(k.places))
   }, [])
 
   // 자정이 지나면 날짜 목록 갱신
@@ -102,6 +108,17 @@ export default function App() {
     setDate(null)
   }
 
+  // 목록 스크롤 위치를 기억했다가 상세에서 돌아오면 복원
+  useEffect(() => {
+    if (route.view !== 'list') return
+    const onScroll = () => (listScroll.current = window.scrollY)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [route.view])
+  useLayoutEffect(() => {
+    if (route.view === 'list') window.scrollTo(0, listScroll.current)
+  }, [route.view])
+
   return (
     <div className="app">
       <header className="topbar">
@@ -129,78 +146,84 @@ export default function App() {
         </div>
       )}
 
-      <section className="controls">
-        <div className="day-filter" role="radiogroup" aria-label="평일/주말">
-          {DAY_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              role="radio"
-              aria-checked={dayFilter === f.value}
-              className={dayFilter === f.value ? 'active' : undefined}
-              onClick={() => pickDayFilter(f.value)}
-            >
-              {f.label}
-            </button>
-          ))}
-          {date && (
-            <span className="picked">
-              {date.slice(5).replace('-', '/')} {holidays[date] ? `· ${holidays[date]}` : ''} 기준
-            </span>
-          )}
-        </div>
-        <DateStrip dates={dates} value={date} counts={dateCounts} weather={weather} holidays={holidays} onChange={pickDate} />
-        <div className="filter-row">
-          <input
-            type="search"
-            className="search"
-            placeholder="공원·시설 이름 검색"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="검색"
-          />
-          <select value={area} onChange={(e) => setArea(e.target.value)} aria-label="구">
-            <option value="">전체 구</option>
-            {areas.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
+      {route.view === 'venue' ? (
+        <VenueDetail placeId={route.key} venues={venues} kakaoPlace={kakaoPlaces[route.key]} />
+      ) : (
+        <>
+        <section className="controls">
+          <div className="day-filter" role="radiogroup" aria-label="평일/주말">
+            {DAY_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                role="radio"
+                aria-checked={dayFilter === f.value}
+                className={dayFilter === f.value ? 'active' : undefined}
+                onClick={() => pickDayFilter(f.value)}
+              >
+                {f.label}
+              </button>
             ))}
-          </select>
-          <label className="switch">
-            <input type="checkbox" checked={onlyReceiving} onChange={(e) => setOnlyReceiving(e.target.checked)} />
-            <span>접수중만</span>
-          </label>
-        </div>
-      </section>
-
-      <div className="view-switch" role="tablist" aria-label="보기 방식">
-        <button role="tab" aria-selected={mobileView === 'list'} onClick={() => setMobileView('list')}>
-          목록 ({filtered.length})
-        </button>
-        <button role="tab" aria-selected={mobileView === 'map'} onClick={() => setMobileView('map')}>
-          지도
-        </button>
-      </div>
-
-      <main className={`content show-${mobileView}`}>
-        <section className="panel list-panel" aria-label="테니스장 목록">
-          {error && <p className="notice error">{error}</p>}
-          {!data && !error && <p className="empty">불러오는 중…</p>}
-          {data && (
-            <VenueList
-              venues={filtered}
-              selectedId={selectedId}
-              onSelectVenue={(id) => {
-                setSelectedId(id)
-                setMobileView('map')
-              }}
+            {date && (
+              <span className="picked">
+                {date.slice(5).replace('-', '/')} {holidays[date] ? `· ${holidays[date]}` : ''} 기준
+              </span>
+            )}
+          </div>
+          <DateStrip dates={dates} value={date} counts={dateCounts} weather={weather} holidays={holidays} onChange={pickDate} />
+          <div className="filter-row">
+            <input
+              type="search"
+              className="search"
+              placeholder="공원·시설 이름 검색"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="검색"
             />
-          )}
+            <select value={area} onChange={(e) => setArea(e.target.value)} aria-label="구">
+              <option value="">전체 구</option>
+              {areas.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+            <label className="switch">
+              <input type="checkbox" checked={onlyReceiving} onChange={(e) => setOnlyReceiving(e.target.checked)} />
+              <span>접수중만</span>
+            </label>
+          </div>
         </section>
-        <section className="panel map-panel" aria-label="지도">
-          <VenueMap venues={filtered} selectedId={selectedId} onSelectVenue={setSelectedId} />
-        </section>
-      </main>
+
+        <div className="view-switch" role="tablist" aria-label="보기 방식">
+          <button role="tab" aria-selected={mobileView === 'list'} onClick={() => setMobileView('list')}>
+            목록 ({filtered.length})
+          </button>
+          <button role="tab" aria-selected={mobileView === 'map'} onClick={() => setMobileView('map')}>
+            지도
+          </button>
+        </div>
+
+        <main className={`content show-${mobileView}`}>
+          <section className="panel list-panel" aria-label="테니스장 목록">
+            {error && <p className="notice error">{error}</p>}
+            {!data && !error && <p className="empty">불러오는 중…</p>}
+            {data && (
+              <VenueList
+                venues={filtered}
+                selectedId={selectedId}
+                onSelectVenue={(id) => {
+                  setSelectedId(id)
+                  setMobileView('map')
+                }}
+              />
+            )}
+          </section>
+          <section className="panel map-panel" aria-label="지도">
+            <VenueMap venues={filtered} selectedId={selectedId} onSelectVenue={setSelectedId} />
+          </section>
+        </main>
+        </>
+      )}
 
       <footer className="footer">
         <p>

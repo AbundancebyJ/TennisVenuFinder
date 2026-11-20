@@ -1,4 +1,5 @@
 import { isReceiving } from '../lib/availability'
+import { placeKey, placeName, venueHref } from '../lib/places'
 import type { Venue } from '../types'
 
 interface Props {
@@ -8,9 +9,6 @@ interface Props {
 }
 
 const DAY_LABEL = { weekday: '평일', weekend: '주말·공휴일', all: '평일·주말' } as const
-
-/** "난지물재생센터>난지물재생센터 테니스장" 처럼 계층이 붙은 시설명은 마지막 부분만 */
-const placeName = (v: Venue) => v.place.split('>').pop()!.trim() || v.place
 
 /** 같은 테니스장 안에서 구분되도록 서비스명에서 반복 정보(연도·요일·시설명) 제거 */
 function courtName(v: Venue) {
@@ -43,7 +41,7 @@ function groupBy(venues: Venue[]) {
     if (!a || a.area !== area) areas.push((a = { area, places: [], count: 0 }))
     const name = placeName(v)
     let p = a.places.find((x) => x.name === name)
-    if (!p) a.places.push((p = { key: `${area}|${name}`, name, items: [] }))
+    if (!p) a.places.push((p = { key: placeKey(v), name, items: [] }))
     p.items.push(v)
     a.count++
   }
@@ -70,9 +68,17 @@ export function VenueList({ venues, selectedId, onSelectVenue }: Props) {
             return (
               <article key={p.key} className={`place-card${selected ? ' selected' : ''}`}>
                 <header className="place-head">
-                  <button className="place-name" onClick={() => onSelectVenue(first.id)} title="지도에서 보기">
-                    <span aria-hidden>📍</span> {p.name}
-                  </button>
+                  <span className="place-title">
+                    <button className="pin" onClick={() => onSelectVenue(first.id)} title="지도에서 보기" aria-label={`${p.name} 지도에서 보기`}>
+                      📍
+                    </button>
+                    <a className="place-name" href={venueHref(p.key)}>
+                      {p.name}
+                      <span className="more" aria-hidden>
+                        상세 ›
+                      </span>
+                    </a>
+                  </span>
                   <span className="place-sub">
                     {pays && <span>{pays}</span>}
                     {first.tel && (

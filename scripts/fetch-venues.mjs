@@ -83,6 +83,43 @@ function normalize(r) {
   }
 }
 
+// 예약 페이지의 상세내용(DTLCONT)을 "3. 상세내용" / "4. 주의사항" 단위로 나누고,
+// 상세내용 안의 "◎ 제목" 소제목으로 다시 나눔. 앞의 1·2번(공통 안내문)은 제외.
+function parseDetail(raw) {
+  if (!raw) return []
+  const text = raw.replace(/\r\n?/g, '\n')
+  const detailIdx = text.indexOf('3. 상세내용')
+  const noticeIdx = text.indexOf('4. 주의사항')
+  // 빈 줄은 없애고 줄바꿈만 유지 (같은 내용이 빈 줄 차이로 다르게 보이지 않게)
+  const clean = (t) => t.replace(/[ \t]+\n/g, '\n').replace(/\n\s*\n+/g, '\n').trim()
+  const sections = []
+  const detail =
+    detailIdx > -1 ? text.slice(detailIdx + '3. 상세내용'.length, noticeIdx > detailIdx ? noticeIdx : undefined) : ''
+  if (detail.trim()) {
+    const parts = detail.split(/(?:^|\n)\s*◎\s*/)
+    const intro = clean(parts.shift() ?? '')
+    if (intro) sections.push({ title: '상세내용', body: intro })
+    for (const part of parts) {
+      const [title, ...rest] = part.split('\n')
+      const body = clean(rest.join('\n'))
+      if (title.trim() || body) sections.push({ title: title.trim() || '상세내용', body })
+    }
+  }
+  if (noticeIdx > -1) {
+    const body = clean(text.slice(noticeIdx + '4. 주의사항'.length))
+    if (body) sections.push({ title: '주의사항', body })
+  }
+  if (!sections.length && detailIdx === -1) sections.push({ title: '상세내용', body: clean(text) })
+  // 같은 제목(예: 주의사항이 두 번)은 하나로 합침
+  const merged = []
+  for (const sec of sections) {
+    const same = merged.find((m) => m.title === sec.title)
+    if (same) same.body = `${same.body}\n\n${sec.body}`
+    else merged.push({ ...sec })
+  }
+  return merged
+}
+
 const fromFileIdx = process.argv.indexOf('--from-file')
 let total, rows
 if (fromFileIdx > -1) {
@@ -99,3 +136,8 @@ await writeFile(
   JSON.stringify({ fetchedAt: new Date().toISOString(), total, partial: rows.length < total, venues }, null, 2),
 )
 console.log(`저장 완료: ${venues.length}/${total}건 -> ${OUT}`)
+
+// 상세 페이지용 상세내용은 목록 데이터와 분리해 필요할 때만 내려받게 함
+const details = Object.fromEntries(rows.map((r) => [r.SVCID, parseDetail(r.DTLCONT)]))
+await writeFile(resolve(dirname(OUT), 'details.json'), JSON.stringify({ fetchedAt: new Date().toISOString(), details }))
+console.log(`상세내용 저장: ${Object.keys(details).length}건`)

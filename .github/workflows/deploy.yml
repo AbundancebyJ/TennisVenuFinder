@@ -34,6 +34,10 @@ jobs:
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
         run: node scripts/fetch-extras.mjs
+      - name: Match Kakao places (카카오맵 장소·후기 링크)
+        env:
+          KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+        run: node scripts/fetch-kakao-places.mjs
       - name: Check Kakao map key (진단용, 실패해도 계속)
         continue-on-error: true
         env:

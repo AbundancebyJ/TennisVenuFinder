@@ -46,3 +46,18 @@ export interface WeatherData {
   region: string
   days: Record<string, DayWeather>
 }
+
+export interface DetailSection {
+  title: string
+  body: string
+}
+
+export interface KakaoPlace {
+  id: string
+  name: string
+  url: string
+  address: string | null
+  roadAddress: string | null
+  phone: string | null
+  category: string | null
+}

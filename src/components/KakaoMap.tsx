@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { isReceiving } from '../lib/availability'
 import { loadKakaoMaps, type KCustomOverlay, type KakaoMaps, type KMap } from '../lib/kakao'
-import { groupPlaces, kakaoRouteUrl, type Place } from '../lib/places'
+import { groupPlaces, kakaoRouteUrl, placeKey, venueHref, type Place } from '../lib/places'
 import type { Venue } from '../types'
 
 interface Props {
@@ -43,11 +43,15 @@ function popupContent(p: Place, onClose: () => void) {
     ul.append(li)
   }
   box.append(ul)
-  const route = el('a', 'k-route', '카카오맵 길찾기 →')
+  const links = el('div', 'k-links')
+  const detail = el('a', 'k-route', '상세 보기 ›')
+  detail.href = venueHref(placeKey(p.venues[0]))
+  const route = el('a', 'k-route', '길찾기 →')
   route.href = kakaoRouteUrl(p.name, p.lat, p.lng)
   route.target = '_blank'
   route.rel = 'noreferrer'
-  box.append(route)
+  links.append(detail, route)
+  box.append(links)
   // 말풍선 안 클릭이 지도 클릭(닫기)으로 전달되지 않게
   box.addEventListener('mousedown', (e) => e.stopPropagation())
   box.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true })
