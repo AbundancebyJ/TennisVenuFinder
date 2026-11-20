@@ -36,13 +36,29 @@ async function search(query, lng, lat) {
   return (await res.json()).documents ?? []
 }
 
-/** 가장 그럴듯한 장소: 테니스 관련 장소 우선, 그다음 가까운 순 */
-function pick(docs) {
+/** 시설명에서 구별되는 단어만 추출 (예: "정릉테니스장" → ["정릉"], "보라매공원" → ["보라매"]) */
+function coreTokens(name) {
+  return name
+    .replace(/소프트테니스장|테니스장|테니스|코트|공원|근린|한강|체육|시설|\d+면|[A-Z]코트|테스트/g, ' ')
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2)
+}
+
+/**
+ * 가장 그럴듯한 장소 고르기
+ * - 테니스 관련 장소만 후보
+ * - 이름의 핵심 단어(앞 두 글자 이상)가 겹치면 1.5km 이내 허용
+ * - 겹치지 않으면 100m 이내만 허용 (근처 사설 레슨장 등 오매칭 방지)
+ * - 이름이 "테니스장"처럼 일반적이면 500m 이내 가장 가까운 곳
+ */
+function pick(docs, name) {
+  const tokens = coreTokens(name)
   const tennis = docs.filter((d) => /테니스/.test(d.place_name) || /테니스/.test(d.category_name))
-  const best = tennis[0] ?? null
-  if (!best) return null
-  if (best.distance && Number(best.distance) > 1500) return null
-  return best
+  const dist = (d) => (d.distance ? Number(d.distance) : Infinity)
+  const shares = (d) => tokens.some((t) => d.place_name.replace(/\s/g, '').includes(t.slice(0, 2)))
+  if (!tokens.length) return tennis.find((d) => dist(d) <= 500) ?? null
+  return tennis.find((d) => shares(d) && dist(d) <= 1500) ?? tennis.find((d) => dist(d) <= 100) ?? null
 }
 
 const { venues } = JSON.parse(await readFile(resolve(DATA, 'tennis.json'), 'utf8'))
@@ -57,7 +73,7 @@ for (const [key, v] of places) {
   try {
     let doc = null
     for (const q of queries) {
-      doc = pick(await search(q, v.lng, v.lat))
+      doc = pick(await search(q, v.lng, v.lat), name)
       if (doc) break
       await sleep(100)
     }
