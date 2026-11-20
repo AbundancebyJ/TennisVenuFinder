@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { CourtBackdrop, ServePlayer } from './components/CourtScene'
 import { DateStrip } from './components/DateStrip'
 import { ThemeToggle } from './components/ThemeToggle'
 import { VenueList } from './components/VenueList'
@@ -14,6 +15,7 @@ import {
   upcomingDates,
 } from './lib/availability'
 import { DEFAULT_HOLIDAYS, mergeHolidays } from './lib/holidays'
+import { placeKey } from './lib/places'
 import { useHashRoute } from './lib/useHashRoute'
 import { useTheme } from './lib/useTheme'
 import type { DayWeather, KakaoPlace, Venue, VenueData, WeatherData } from './types'
@@ -108,6 +110,15 @@ export default function App() {
     setDate(null)
   }
 
+  // 히어로 숫자: 운영 중인 테니스장 수, 접수중인 테니스장 수, 오늘 기온
+  const stats = useMemo(() => {
+    if (!data) return null
+    const active = venues.filter((v) => !v.openEnd || v.openEnd >= today)
+    const all = new Set(active.map(placeKey))
+    const receiving = new Set(active.filter(isReceiving).map(placeKey))
+    return { places: all.size, receiving: receiving.size, today: weather[today] }
+  }, [data, venues, today, weather])
+
   // 목록 스크롤 위치를 기억했다가 상세에서 돌아오면 복원
   useEffect(() => {
     if (route.view !== 'list') return
@@ -121,22 +132,53 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <span className="logo" aria-hidden>
-            🎾
-          </span>
-          <div>
-            <h1>서울 테니스장 예약 현황</h1>
+      <CourtBackdrop />
+      <header className={`hero${route.view === 'venue' ? ' compact' : ''}`}>
+        <div className="hero-top">
+          <a className="brand" href="#" aria-label="처음 화면으로">
+            <span className="brand-ball" aria-hidden />
+            <span className="brand-text">SEOUL PUBLIC TENNIS</span>
+          </a>
+          <ThemeToggle value={pref} onChange={setPref} />
+        </div>
+        <div className="hero-body">
+          <div className="hero-copy">
+            <p className="kicker">Book your court · 공공 테니스장</p>
+            <h1>
+              서울 테니스장
+              <br />
+              <span className="hl">예약 현황</span>
+            </h1>
+            {stats && (
+              <ul className="hero-stats">
+                <li>
+                  <strong>{stats.places}</strong>
+                  <span>테니스장</span>
+                </li>
+                <li>
+                  <strong className="on">{stats.receiving}</strong>
+                  <span>접수중</span>
+                </li>
+                {stats.today && stats.today.tmin !== null && stats.today.tmax !== null && (
+                  <li>
+                    <strong>
+                      {Math.round(stats.today.tmin)}°<em>/</em>
+                      {Math.round(stats.today.tmax)}°
+                    </strong>
+                    <span>오늘 서울</span>
+                  </li>
+                )}
+              </ul>
+            )}
             {data && (
               <p className="updated">
-                {new Date(data.fetchedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })} 기준 ·{' '}
-                {data.venues.length}개 예약 서비스
+                <span className="live" aria-hidden />
+                {new Date(data.fetchedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })} 업데이트
               </p>
             )}
           </div>
+          <ServePlayer />
         </div>
-        <ThemeToggle value={pref} onChange={setPref} />
       </header>
 
       {data?.partial && (

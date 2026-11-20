@@ -109,7 +109,7 @@ export function VenueList({ venues, selectedId, onSelectVenue }: Props) {
                         </span>
                         <span className={`status ${on ? 's-on' : 's-off'}`}>{v.status}</span>
                         <a className={`reserve${on ? '' : ' muted'}`} href={v.url} target="_blank" rel="noreferrer">
-                          예약사이트 이동
+                          예약사이트 <span aria-hidden>↗</span>
                         </a>
                       </li>
                     )

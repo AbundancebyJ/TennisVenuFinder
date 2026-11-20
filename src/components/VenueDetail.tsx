@@ -201,7 +201,7 @@ export function VenueDetail({ placeId, venues, kakaoPlace }: Props) {
                   <dd>{v.hourStart && v.hourEnd ? `${v.hourStart} ~ ${v.hourEnd}` : '-'}</dd>
                 </dl>
                 <a className={`reserve${on ? '' : ' muted'}`} href={v.url} target="_blank" rel="noreferrer">
-                  예약사이트 이동
+                  예약사이트 <span aria-hidden>↗</span>
                 </a>
               </li>
             )
