@@ -34,6 +34,17 @@ jobs:
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
         run: node scripts/fetch-extras.mjs
+      - name: Check Kakao map key (진단용, 실패해도 계속)
+        continue-on-error: true
+        env:
+          KAKAO_MAP_KEY: ${{ secrets.KAKAO_MAP_KEY }}
+        run: |
+          KEY=$(printf '%s' "$KAKAO_MAP_KEY" | tr -d '[:space:]')
+          echo "key length: ${#KEY}"
+          curl -sS -o kakao.txt -w "status: %{http_code}\n" \
+            -H "Referer: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" \
+            "https://dapi.kakao.com/v2/maps/sdk.js?appkey=$KEY&autoload=false"
+          head -c 300 kakao.txt; echo
       - name: Build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
