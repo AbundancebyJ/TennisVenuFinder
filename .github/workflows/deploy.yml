@@ -41,8 +41,9 @@ jobs:
         run: |
           KEY=$(printf '%s' "$KAKAO_MAP_KEY" | tr -d '[:space:]')
           echo "key length: ${#KEY}"
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           curl -sS -o kakao.txt -w "status: %{http_code}\n" \
-            -H "Referer: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" \
+            -H "Referer: https://$OWNER.github.io/${{ github.event.repository.name }}/" \
             "https://dapi.kakao.com/v2/maps/sdk.js?appkey=$KEY&autoload=false"
           head -c 300 kakao.txt; echo
       - name: Build
