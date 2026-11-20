@@ -32,9 +32,27 @@ const ymd = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getU
 const iso = (yyyymmdd) => `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`
 const addDays = (d, n) => new Date(d.getTime() + n * 86400000)
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/** 네트워크 오류 시 재시도. 오류 원인(cause)까지 남겨 진단할 수 있게 함 */
+async function request(url) {
+  let lastErr
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      return await fetch(url, { signal: AbortSignal.timeout(20000) })
+    } catch (e) {
+      const cause = e.cause ? ` (${e.cause.code ?? ''} ${e.cause.message ?? e.cause})` : ''
+      lastErr = new Error(`${e.message}${cause}`)
+      console.warn(`  요청 실패 ${attempt}/4: ${new URL(url).pathname}${cause}`)
+      await sleep(1500 * attempt)
+    }
+  }
+  throw lastErr
+}
+
 async function call(url, params) {
   const qs = new URLSearchParams({ serviceKey: KEY, ...params })
-  const res = await fetch(`${url}?${qs}`)
+  const res = await request(`${url}?${qs}`)
   const text = await res.text()
   let body
   try {
