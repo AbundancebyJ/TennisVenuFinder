@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { isReceiving } from '../lib/availability'
 import { placeKey, placeName, venueHref } from '../lib/places'
 import type { Venue } from '../types'
@@ -48,6 +49,110 @@ function groupBy(venues: Venue[]) {
   return areas
 }
 
+function PlaceCard({
+  p,
+  selectedId,
+  onSelectVenue,
+}: {
+  p: PlaceGroup
+  selectedId: string | null
+  onSelectVenue: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLElement>(null)
+  const first = p.items[0]
+  const selected = p.items.some((v) => v.id === selectedId)
+  const expanded = open
+  const receiving = p.items.filter(isReceiving).length
+  const pays = [...new Set(p.items.map((v) => v.payment).filter(Boolean))].join('·')
+  const dayTypes = [...new Set(p.items.map((v) => v.dayType))]
+  const starts = p.items.map((v) => v.hourStart).filter(Boolean) as string[]
+  const ends = p.items.map((v) => v.hourEnd).filter(Boolean) as string[]
+  const hours = starts.length && ends.length ? `${starts.sort()[0]}–${ends.sort().at(-1)}` : null
+  const listId = `courts-${first.id}`
+
+  // 지도에서 선택하면 해당 카드를 펼치고 보이게 스크롤
+  const [wasSelected, setWasSelected] = useState(selected)
+  if (selected !== wasSelected) {
+    setWasSelected(selected)
+    if (selected) setOpen(true)
+  }
+  useEffect(() => {
+    if (selected) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [selected])
+
+  return (
+    <article ref={ref} className={`place-card${selected ? ' selected' : ''}${expanded ? ' expanded' : ''}`}>
+      <header className="place-head">
+        <button
+          className="place-toggle"
+          onClick={() => setOpen(!expanded)}
+          aria-expanded={expanded}
+          aria-controls={listId}
+        >
+          <span className="chev" aria-hidden>
+            ›
+          </span>
+          <span className="place-main">
+            <span className="place-name">{p.name}</span>
+            <span className="place-summary">
+              {dayTypes.map((t) => (
+                <span key={t} className={`chip day-${t}`}>
+                  {DAY_LABEL[t]}
+                </span>
+              ))}
+              {hours && <span className="hours">{hours}</span>}
+              {pays && <span>{pays}</span>}
+            </span>
+          </span>
+          <span className={receiving ? 'cnt on' : 'cnt'}>
+            접수중 {receiving}/{p.items.length}
+          </span>
+        </button>
+        <span className="place-actions">
+          <button className="pin" onClick={() => onSelectVenue(first.id)} title="지도에서 보기" aria-label={`${p.name} 지도에서 보기`}>
+            📍
+          </button>
+          <a className="more" href={venueHref(p.key)}>
+            상세 ›
+          </a>
+        </span>
+      </header>
+      {expanded && (
+        <ul className="court-list" id={listId}>
+          {p.items.map((v) => {
+            const on = isReceiving(v)
+            return (
+              <li key={v.id} className={`court-row${on ? '' : ' off'}`}>
+                <span className="court-name" title={v.name}>
+                  {courtName(v)}
+                </span>
+                <span className="court-meta">
+                  <span className={`chip day-${v.dayType}`}>{DAY_LABEL[v.dayType]}</span>
+                  {v.hourStart && v.hourEnd && (
+                    <span className="hours">
+                      {v.hourStart}–{v.hourEnd}
+                    </span>
+                  )}
+                </span>
+                <span className={`status ${on ? 's-on' : 's-off'}`}>{v.status}</span>
+                <a className={`reserve${on ? '' : ' muted'}`} href={v.url} target="_blank" rel="noreferrer">
+                  예약사이트 <span aria-hidden>↗</span>
+                </a>
+              </li>
+            )
+          })}
+          {first.tel && (
+            <li className="court-foot">
+              문의 <a href={`tel:${first.tel}`}>{first.tel}</a>
+            </li>
+          )}
+        </ul>
+      )}
+    </article>
+  )
+}
+
 export function VenueList({ venues, selectedId, onSelectVenue }: Props) {
   if (venues.length === 0) {
     return <p className="empty">조건에 맞는 테니스장이 없어요. 날짜나 필터를 바꿔 보세요.</p>
@@ -60,64 +165,9 @@ export function VenueList({ venues, selectedId, onSelectVenue }: Props) {
           <h2 className="area-title">
             {a.area} <span>테니스장 {a.places.length}곳</span>
           </h2>
-          {a.places.map((p) => {
-            const first = p.items[0]
-            const selected = p.items.some((v) => v.id === selectedId)
-            const open = p.items.filter(isReceiving).length
-            const pays = [...new Set(p.items.map((v) => v.payment).filter(Boolean))].join('·')
-            return (
-              <article key={p.key} className={`place-card${selected ? ' selected' : ''}`}>
-                <header className="place-head">
-                  <span className="place-title">
-                    <button className="pin" onClick={() => onSelectVenue(first.id)} title="지도에서 보기" aria-label={`${p.name} 지도에서 보기`}>
-                      📍
-                    </button>
-                    <a className="place-name" href={venueHref(p.key)}>
-                      {p.name}
-                      <span className="more" aria-hidden>
-                        상세 ›
-                      </span>
-                    </a>
-                  </span>
-                  <span className="place-sub">
-                    {pays && <span>{pays}</span>}
-                    {first.tel && (
-                      <a href={`tel:${first.tel}`} className="tel">
-                        {first.tel}
-                      </a>
-                    )}
-                    <span className={open ? 'cnt on' : 'cnt'}>
-                      접수중 {open}/{p.items.length}
-                    </span>
-                  </span>
-                </header>
-                <ul className="court-list">
-                  {p.items.map((v) => {
-                    const on = isReceiving(v)
-                    return (
-                      <li key={v.id} className={`court-row${on ? '' : ' off'}`}>
-                        <span className="court-name" title={v.name}>
-                          {courtName(v)}
-                        </span>
-                        <span className="court-meta">
-                          <span className={`chip day-${v.dayType}`}>{DAY_LABEL[v.dayType]}</span>
-                          {v.hourStart && v.hourEnd && (
-                            <span className="hours">
-                              {v.hourStart}–{v.hourEnd}
-                            </span>
-                          )}
-                        </span>
-                        <span className={`status ${on ? 's-on' : 's-off'}`}>{v.status}</span>
-                        <a className={`reserve${on ? '' : ' muted'}`} href={v.url} target="_blank" rel="noreferrer">
-                          예약사이트 <span aria-hidden>↗</span>
-                        </a>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </article>
-            )
-          })}
+          {a.places.map((p) => (
+            <PlaceCard key={p.key} p={p} selectedId={selectedId} onSelectVenue={onSelectVenue} />
+          ))}
         </section>
       ))}
     </div>

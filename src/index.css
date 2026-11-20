@@ -466,3 +466,25 @@ body { background: var(--bg); }
   .serve-player { position: absolute; right: -24px; bottom: 30px; width: 150px; opacity: 0.55; z-index: -1; }
   .brand-text { font-size: 0.68rem; letter-spacing: 0.12em; }
 }
+
+/* 접이식 테니스장 카드 */
+.place-card { margin: 8px 10px; }
+.place-head { padding: 0; gap: 0; flex-wrap: nowrap; align-items: stretch; border-bottom: 0; }
+.place-card.expanded .place-head { border-bottom: 1px solid var(--border); }
+.place-toggle { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 10px 6px 10px 12px; border: 0; background: transparent; text-align: left; cursor: pointer; color: inherit; }
+.place-toggle:hover .place-name { text-decoration: underline; }
+.chev { flex: 0 0 auto; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-2); font-weight: var(--fw-black); transition: transform 0.2s, background 0.2s; }
+.place-card.expanded .chev { transform: rotate(90deg); background: var(--accent); color: var(--accent-fg); }
+.place-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.place-main .place-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-summary { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.76rem; color: var(--muted); font-weight: var(--fw-light); }
+.place-toggle .cnt { flex: 0 0 auto; font-size: 0.78rem; font-weight: var(--fw-bold); color: var(--muted); white-space: nowrap; }
+.place-toggle .cnt.on { color: var(--open); }
+.place-actions { display: flex; align-items: center; gap: 2px; padding-right: 10px; }
+.place-actions .more { font-size: 0.78rem; font-weight: var(--fw-semibold); color: var(--accent); text-decoration: none; padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
+.place-actions .more:hover { background: var(--surface-2); }
+.court-foot { padding: 6px 12px 10px; font-size: 0.78rem; color: var(--muted); font-weight: var(--fw-light); }
+.court-foot a { color: inherit; }
+@media (prefers-reduced-motion: no-preference) {
+  .place-card.expanded .court-list { animation: rise 0.25s ease-out both; }
+}
