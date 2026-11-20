@@ -37,6 +37,7 @@ jobs:
       - name: Build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_KAKAO_MAP_KEY: ${{ secrets.KAKAO_MAP_KEY }}
         run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

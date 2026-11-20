@@ -6,7 +6,8 @@
 - 날짜마다 서울 날씨 아이콘, 최저·최고기온, 강수확률(30% 이상)을 보여줘요(약 10일치).
 - 같은 테니스장의 여러 코트·평일/주말 서비스는 한 카드로 묶어서 보여줘요.
 - 목록은 구 → 테니스장 이름 순으로 정렬되고, 구 이름·검색어·접수중 여부로 필터링해요.
-- 지도(OpenStreetMap)에서 위치를 확인하고, "예약하기"로 서울시 예약 페이지로 이동해요.
+- 카카오 지도에서 위치를 확인하고 카카오맵 길찾기로 이동할 수 있어요(키가 없으면 OpenStreetMap으로 대체).
+- "예약사이트 이동"으로 서울시 예약 페이지로 이동해요.
 - 반응형(데스크톱: 목록+지도 2단 / 모바일: 탭 전환), 라이트·다크·시스템 테마를 지원해요.
 
 ## 데이터
@@ -37,7 +38,8 @@ npm run lint
 
 `.github/workflows/deploy.yml`이 main 푸시 때와 **매시간** 데이터를 새로 받아 빌드·배포해요.
 
-1. 저장소 **Settings → Secrets and variables → Actions**에 `SEOUL_API_KEY`, `DATA_GO_KR_KEY` 추가
+1. 저장소 **Settings → Secrets and variables → Actions**에 `SEOUL_API_KEY`, `DATA_GO_KR_KEY`, `KAKAO_MAP_KEY` 추가
+   - `KAKAO_MAP_KEY`: [카카오 개발자](https://developers.kakao.com) 앱의 **JavaScript 키**. 앱 설정 → 플랫폼 → Web에 `https://abundancebyj.github.io`(로컬 개발 시 `http://localhost:5173`)를 등록해야 해요.
 2. **Settings → Pages → Source**를 `GitHub Actions`로 설정
 3. Actions 탭에서 워크플로를 한 번 실행 (또는 main에 푸시)
 

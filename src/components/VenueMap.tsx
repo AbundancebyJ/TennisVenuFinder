@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
-import type { LatLngBoundsExpression } from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { isReceiving } from '../lib/availability'
+import { lazy, Suspense, useCallback, useState } from 'react'
+import { KAKAO_MAP_KEY } from '../lib/kakao'
 import type { Venue } from '../types'
+import { KakaoMap } from './KakaoMap'
+
+// 카카오 키가 없거나 SDK 로드에 실패하면 OpenStreetMap(Leaflet)으로 대체 — 필요할 때만 내려받음
+const LeafletMap = lazy(() => import('./LeafletMap'))
 
 interface Props {
   venues: Venue[]
@@ -11,112 +12,17 @@ interface Props {
   onSelectVenue: (id: string) => void
 }
 
-interface Place {
-  key: string
-  name: string
-  lat: number
-  lng: number
-  venues: Venue[]
-  open: number
-}
+export function VenueMap(props: Props) {
+  const [kakaoError, setKakaoError] = useState<string | null>(null)
+  const onError = useCallback((msg: string) => {
+    console.warn(msg)
+    setKakaoError(msg)
+  }, [])
 
-const SEOUL: [number, number] = [37.5665, 126.978]
-
-function FitBounds({ places }: { places: Place[] }) {
-  const map = useMap()
-  const latest = useRef(places)
-  useEffect(() => {
-    latest.current = places
-  })
-  // 시설 구성이 바뀔 때만 다시 맞춤 (시간대 변경 등으로는 지도가 움직이지 않도록)
-  const sig = places.map((p) => p.key).join('|')
-  useEffect(() => {
-    const places = latest.current
-    if (places.length === 0) return
-    if (places.length === 1) {
-      map.setView([places[0].lat, places[0].lng], 14)
-      return
-    }
-    const bounds: LatLngBoundsExpression = places.map((p) => [p.lat, p.lng])
-    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 })
-  }, [sig, map])
-  return null
-}
-
-// 모바일에서 숨겨졌던 지도가 다시 보일 때 크기 재계산
-function AutoResize() {
-  const map = useMap()
-  useEffect(() => {
-    const ro = new ResizeObserver(() => map.invalidateSize())
-    ro.observe(map.getContainer())
-    return () => ro.disconnect()
-  }, [map])
-  return null
-}
-
-function FlyTo({ place }: { place: Place | undefined }) {
-  const map = useMap()
-  useEffect(() => {
-    if (place) map.flyTo([place.lat, place.lng], Math.max(map.getZoom(), 14), { duration: 0.6 })
-  }, [place, map])
-  return null
-}
-
-export function VenueMap({ venues, selectedId, onSelectVenue }: Props) {
-  const places = useMemo(() => {
-    const byKey = new Map<string, Place>()
-    for (const v of venues) {
-      if (v.lat === null || v.lng === null) continue
-      const key = `${v.lat.toFixed(4)},${v.lng.toFixed(4)}`
-      const p = byKey.get(key) ?? { key, name: v.place, lat: v.lat, lng: v.lng, venues: [], open: 0 }
-      p.venues.push(v)
-      p.open += Number(isReceiving(v))
-      byKey.set(key, p)
-    }
-    return [...byKey.values()]
-  }, [venues])
-
-  const selectedPlace = places.find((p) => p.venues.some((v) => v.id === selectedId))
-
+  if (KAKAO_MAP_KEY && !kakaoError) return <KakaoMap appKey={KAKAO_MAP_KEY} onError={onError} {...props} />
   return (
-    <MapContainer center={SEOUL} zoom={11} className="map" scrollWheelZoom>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <AutoResize />
-      <FitBounds places={places} />
-      <FlyTo place={selectedPlace} />
-      {places.map((p) => {
-        const active = p === selectedPlace
-        return (
-          <CircleMarker
-            key={p.key}
-            center={[p.lat, p.lng]}
-            radius={active ? 13 : 9}
-            className={`marker ${p.open > 0 ? 'marker-open' : 'marker-closed'}${active ? ' marker-active' : ''}`}
-            pathOptions={{ weight: active ? 3 : 2, fillOpacity: 0.85 }}
-            eventHandlers={{ click: () => onSelectVenue(p.venues[0].id) }}
-          >
-            <Popup>
-              <strong>{p.name}</strong>
-              <ul className="popup-list">
-                {p.venues.map((v) => {
-                  const on = isReceiving(v)
-                  return (
-                    <li key={v.id}>
-                      <a href={v.url} target="_blank" rel="noreferrer">
-                        {v.name}
-                      </a>
-                      <span className={on ? 'ok' : 'no'}> {v.status}</span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </Popup>
-          </CircleMarker>
-        )
-      })}
-    </MapContainer>
+    <Suspense fallback={<div className="map map-loading">지도를 불러오는 중…</div>}>
+      <LeafletMap {...props} />
+    </Suspense>
   )
 }
